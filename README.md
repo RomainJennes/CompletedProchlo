@@ -16,7 +16,7 @@ Generate key pairs using OpenSSL, i.e.
 openssl ecparam -genkey -name prime256V1 -genkey -noout -out key.pem
 openssl ec -in key.pem -pubout key.pub
 
-##Run
+## Run
 
 To generate 5000 Blinder items using the keys in etc/ :
 
