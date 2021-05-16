@@ -57,6 +57,8 @@ void print_hex(uint8_t* msg,int len) {
 
 int main(int argc, char* argv[]){
 
+    int N =50000;
+    const char *filepath = "50000.dat";
     auto configuration = std::unique_ptr<Configuration>(new Configuration());
     configuration->blinder_key_file="etc/key1.pub";
     configuration->thresholder_key_file="etc/key2.pub";
@@ -77,9 +79,9 @@ int main(int argc, char* argv[]){
         warn("setup_output()");
         return -1;
     }
-    int N =5000;
+    
 
-	const char *filepath = to_string(N)+".dat";
+	
 
      int fd = open(filepath, O_RDONLY, (mode_t)0600);
 	
@@ -115,10 +117,10 @@ int main(int argc, char* argv[]){
     
     BlinderItem* blinder_items_;
     blinder_items_ = reinterpret_cast<BlinderItem*>(filemap);
-    ToThreshold histogram[5000];
+    ToThreshold histogram[N];
 
-    int T = 2;
-    int j=0;
+    int T = 20;
+    int groundtruth=0;
     unsigned long total = 0;
 
 	for( int i =0; i<N;i++){
@@ -142,13 +144,15 @@ int main(int argc, char* argv[]){
         bool found=false;
         //print_hex(&blinded_crowd_id[0],sizeof(blinded_crowd_id));
         int jj =0;
-        for (auto record : histogram){
-            if(compare(&record.blinded_crowd_id[0],sizeof(record.blinded_crowd_id),&blinded_crowd_id[0],sizeof(blinded_crowd_id))==1){
+        for (int jj = 0; jj < sizeof(histogram)/sizeof(*histogram); jj++){
+            if(compare(&histogram[jj].blinded_crowd_id[0],sizeof(histogram[jj].blinded_crowd_id),&blinded_crowd_id[0],sizeof(blinded_crowd_id))==1){
                 //printf("found in array: \n");
                 //print_hex(&record.blinded_crowd_id[0],sizeof(record.blinded_crowd_id));
                 //printf("compare result: %d\n",compare(&record.blinded_crowd_id[0],sizeof(record.blinded_crowd_id),&blinded_crowd_id[0],sizeof(blinded_crowd_id)));
                 //printf("previous occurences:%d \n",record.occurences);
-                if(record.occurences<T-1){
+                histogram[jj].occurences++;
+                //cout << histogram[jj].occurences << endl;
+                /*if(record.occurences<T-1){
                     histogram[jj].occurences++;
                     //printf("%d",record.occurences);
                 }else{
@@ -159,39 +163,56 @@ int main(int argc, char* argv[]){
                     prochlo.crypto_.DecryptAnalyzer(record.plain_thresholder_item.analyzer_item,&plain_analyzer_item);
                     printf("%s\n",plain_analyzer_item.prochlomation.data);
                     total=total + 50;
-                }
+                }*/
                 //printf("crowd ID: ");
                 //print_hex(&record.blinded_crowd_id[0],sizeof(record.blinded_crowd_id));
                 //printf("occurences:%d \n \n",histogram[jj].occurences);
                 found=true;
+
                 break;
             }
-            jj++;
         }
         if(!found){
             ToThreshold thisItem;
             memcpy(&thisItem.blinded_crowd_id,&blinded_crowd_id,prochlo::kP256PointLength);
             memcpy(&thisItem.plain_thresholder_item,&plain_thresholder_item,prochlo::kPlainThresholderItemLength);
             thisItem.occurences=1;
-            histogram[j]=thisItem;
-            j++;
+            histogram[groundtruth]=thisItem;
+            
+            groundtruth++;
         }
 	}
-    printf("%lu \n",total);
-/*    for (record: histogram){
-        if( < T){
-            it = histogram.erase(it);
-        }else{
-            ++it;
-        }
+    printf("Ground truth: %d \n", groundtruth);
+    random_device rd{};
+    mt19937 gen{rd()};
 
+    normal_distribution<> d{10,2};
+    int nocrowd=0;
+    int secretcrowd=0;
+    int crowd =0;
+    for (int ii = 0; ii < groundtruth; ii++){
+
+        int n= round(d(gen));
+        if( histogram[ii].occurences >= T){
+            if(histogram[ii].occurences >=T+n){
+                secretcrowd++;
+            }
+            nocrowd++;
+        }
+        if(histogram[ii].occurences >=T+n){
+            crowd++;
+        }
     }
-*/
+
+    printf("no crowd: %d \n",nocrowd);
+    printf("crowd: %d \n",crowd);
+    printf("secret crowd: %d \n",secretcrowd);
+    
+
     
 
     // Don't forget to free the mmapped memory
-    if (munmap(filemap, fileInfo.st_size) == -1)
-    {
+    if (munmap(filemap, fileInfo.st_size) == -1){
         close(fd);
         perror("Error un-mmapping the file");
         exit(EXIT_FAILURE);

@@ -384,55 +384,7 @@ bool Prochlo::MakeProchlomation(uint64_t metric, const uint8_t* data,
   return true;
 }
 
-bool Prochlo::MakeProchlomation(uint64_t metric, const uint8_t* data,
-                                const uint8_t* crowd_id,
-                                BlinderItem* blinder_item) {
-  assert(data != nullptr);
-  assert(crowd_id != nullptr);
-  assert(blinder_item != nullptr);
 
-  // We have to create a PlainAnalyzerItem, a PlainBlinderItem, and a
-  // PlainThresholderItem to encrypt them into an AnalyzerItem, a BlinderItem,
-  // and a ThresholderItem, respectively. We'll stage those here. We can
-  // probably do this more efficiently to avoid copies.
-  PlainAnalyzerItem plain_analyzer_item;
-  PlainBlinderItem plain_blinder_item;
-  //PlainThresholderItem plain_thresholder_item;
-
-  // First the prochlomation
-  auto& prochlomation = plain_analyzer_item.prochlomation;
-  prochlomation.metric = metric;
-  memcpy(prochlomation.data, data, kProchlomationDataLength);
-
-  // Then the AnalyzerItem of the PlainThresholderItem
-  if (!crypto_.EncryptForAnalyzer(plain_analyzer_item,
-                                  &plain_thresholder_item.analyzer_item)) {
-    warn("Failed to encrypt for analyzer.");
-    return false;
-  }
-  
-  // Now create the ThresholderItem of the PlainBlinderItem
-  if (!crypto_.EncryptForThresholder(plain_thresholder_item,
-                                     &plain_blinder_item.thresholder_item)) {
-    warn("Failed to encrypt_for_thresholder.");
-    return false;
-  }
-
-  // Now prepare the PlainBlinderItem
-  if (!crypto_.EncryptBlindableCrowdId(crowd_id,
-                                       &plain_blinder_item.encoded_crowd_id)) {
-    warn("Failed to encrypt a blindable crowd ID.");
-    return false;
-  }
-
-  // And create the BlinderItem
-  if (!crypto_.EncryptForBlinder(plain_blinder_item, blinder_item)) {
-    warn("Failed to encrypt for blinder.");
-    return false;
-  }
-
-  return true;
-}
 
 
 }  // namespace prochlo
